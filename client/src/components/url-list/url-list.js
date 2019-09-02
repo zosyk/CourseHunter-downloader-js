@@ -6,7 +6,7 @@ export default class UrlList extends Component {
     render() {
         const elements = this.props.urls.map(item =>
             <li key={item.id} >
-                {item.url}
+                {item.localPath}
             </li>);
 
         if (elements.length === 0) {

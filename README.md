@@ -1,4 +1,4 @@
-#CourseHunter downloader Node-js & React
+###CourseHunter downloader Node-js & React
 
 In order to build it, just type:
 `npm install` in the root folder

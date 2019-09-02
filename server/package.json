@@ -12,6 +12,11 @@
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "morgan": "^1.9.1"
+    "jssoup": "0.0.10",
+    "morgan": "^1.9.1",
+    "node-html-parser": "^1.1.16",
+    "numeral": "^2.0.6",
+    "superagent": "^5.1.0",
+    "superagent-proxy": "^2.0.0"
   }
 }
