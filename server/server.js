@@ -34,7 +34,7 @@ app.use(logger('dev'));
 
 
 router.get('/urls', async (req, res) => {
-    const {email = '123', password = '321', url, out} = req.query;
+    const {email, password, url, out} = req.query;
     console.log(`email: ${email}`);
     console.log(`password: ${password}`);
     console.log(`url: ${url}`);
@@ -42,24 +42,25 @@ router.get('/urls', async (req, res) => {
 
     let urls = null;
     if (!email || !password) {
-        // free course
-        request
-            .get('/some-url')
-            .end((res) => {
-                console.log("res: below");
-                console.log(res)
-            });
-
+        urls = await download(await freeCourseRequest(url), out);
     } else {
-        urls = await downloadPremiumCourse(req.query);
+        urls = await download(await premiumCourseResponse(req.query), out);
     }
 
 
     return res.json({success: true, urls});
 });
 
-async function downloadPremiumCourse(query) {
-    const {email, password, url, out} = query;
+async function freeCourseRequest(url) {
+    console.log("****** Selected FREE course");
+
+    return request.get(url);
+}
+
+async function premiumCourseResponse(query) {
+    console.log("****** Selected PREMIUM course");
+    const {email, password, url} = query;
+
     const agent = request.agent();
     return await agent
         .post('https://coursehunter.net/sign-in')
@@ -69,43 +70,46 @@ async function downloadPremiumCourse(query) {
         .then(() => {
             return agent.get(url);
         })
-        .then(async res => {
-            urls = [];
+}
 
-            const urlMatches = res.text.matchAll(CONTENT_URL_PATTERN);
-            const descriptionMatches = res.text.matchAll(CONTENT_DESCRIPTION_PATTERN);
+async function download(res, out) {
+    urls = [];
 
-            let index = 1;
-            for (const match of urlMatches) {
-                urls.push({
-                    id: index,
-                    url: match[1]
-                });
-                index++;
-            }
+    const urlMatches = res.text.matchAll(CONTENT_URL_PATTERN);
+    const descriptionMatches = res.text.matchAll(CONTENT_DESCRIPTION_PATTERN);
 
-            index = 0;
-            for (const match of descriptionMatches) {
-                const urlObj = urls[index];
-                urlObj.description = match[1];
-
-                const ext = path.extname(urlObj.url);
-                const description = urlObj.description.replace(/\//g, '_');
-                const fileName = numeral(urlObj.id).format('0'.repeat((urls.length + '').length + 1)) + '. ' + description + ext;
-                urlObj.localPath = path.join(out, fileName);
-
-                index++;
-            }
-
-            for (let i = 0; i< urls.length; i++) {
-                const urlObj = urls[i];
-                await makeSynchronousRequest(urlObj);
-            }
-
-
-
-            return urls;
+    let index = 1;
+    for (const match of urlMatches) {
+        urls.push({
+            id: index,
+            url: match[1]
         });
+        index++;
+    }
+
+    index = 0;
+    for (const match of descriptionMatches) {
+        const urlObj = urls[index];
+        urlObj.description = match[1];
+
+        const ext = path.extname(urlObj.url);
+        const description = urlObj.description.replace(/\//g, '_');
+        const fileName = numeral(urlObj.id).format('0'.repeat((urls.length + '').length + 1)) + '. ' + description + ext;
+        urlObj.localPath = path.join(out, fileName);
+
+        index++;
+    }
+
+    console.log("Found urls: " + urls.length);
+
+    for (let i = 0; i< urls.length; i++) {
+        const urlObj = urls[i];
+        await makeSynchronousRequest(urlObj);
+    }
+
+
+
+    return urls;
 }
 
 function getPromise(urlObj) {
