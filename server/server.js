@@ -14,8 +14,8 @@ const router = express.Router();
 
 const urlRetriever = require('./util/url-retriever');
 const request = require('superagent');
-require('superagent-proxy')(request);
-const proxy = 'http://127.0.0.1:8080';
+// require('superagent-proxy')(request);
+// const proxy = 'http://127.0.0.1:8080';
 
 const JSSoup = require('jssoup').default;
 
@@ -63,13 +63,13 @@ async function downloadPremiumCourse(query) {
     const agent = request.agent();
     return await agent
         .post('https://coursehunter.net/sign-in')
-        .proxy(proxy)
+        // .proxy(proxy)
         .set('Content-Type', 'application/json')
         .send(`{"e_mail":"${email}","password":"${password}"}`)
         .then(() => {
             return agent.get(url);
         })
-        .then(res => {
+        .then(async res => {
             urls = [];
 
             const urlMatches = res.text.matchAll(CONTENT_URL_PATTERN);
@@ -86,30 +86,59 @@ async function downloadPremiumCourse(query) {
 
             index = 0;
             for (const match of descriptionMatches) {
-                urlObj = urls[index];
+                const urlObj = urls[index];
                 urlObj.description = match[1];
 
                 const ext = path.extname(urlObj.url);
-                console.log("id: " + urlObj.id);
-
-                const fileName = numeral(urlObj.id).format('0'.repeat((urls.length + '').length + 1)) + '. ' + urlObj.description + ext;
+                const description = urlObj.description.replace(/\//g, '_');
+                const fileName = numeral(urlObj.id).format('0'.repeat((urls.length + '').length + 1)) + '. ' + description + ext;
                 urlObj.localPath = path.join(out, fileName);
 
                 index++;
             }
 
-            // console.log(urls);
+            for (let i = 0; i< urls.length; i++) {
+                const urlObj = urls[i];
+                await makeSynchronousRequest(urlObj);
+            }
 
-            urls.forEach((urlObj) => {
-                const request = https.get(urlObj.url, function(response) {
-                    const file = fs.createWriteStream(urlObj.localPath);
-                    response.pipe(file);
-                    console.log("Downloaded to: " + urlObj.localPath);
-                });
-            });
+
 
             return urls;
         });
+}
+
+function getPromise(urlObj) {
+    return new Promise((resolve, reject) => {
+
+        https.get(urlObj.url, function(res) {
+            const file = fs.createWriteStream(urlObj.localPath);
+
+            res.on('data', function(data) {
+                file.write(data);
+            }).on('end', function() {
+                file.end();
+                resolve("Downloaded to: " + urlObj.localPath);
+            }).on('error', (error) => {
+                reject(error);
+            });
+        });
+    });
+}
+
+async function makeSynchronousRequest(urlObj) {
+    try {
+        console.log("Creating promise for : " + urlObj.url);
+        let http_promise = getPromise(urlObj);
+        let response_body = await http_promise;
+
+        // holds response from server that is passed when Promise is resolved
+        console.log(response_body);
+    }
+    catch(error) {
+        // Promise rejected
+        console.error(error);
+    }
 }
 
 app.use('/api', router);
