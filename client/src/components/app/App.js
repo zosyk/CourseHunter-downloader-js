@@ -49,7 +49,7 @@ export default class App extends Component {
                 </div>
                 <div>
                     <label htmlFor="password">User password</label>
-                    <input type="text" id="password" name="password"
+                    <input type="password" id="password" name="password"
                            onChange={this.handleChangePassword}
                            value={this.state.password}/>
                 </div>
